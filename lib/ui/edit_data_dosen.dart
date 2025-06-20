@@ -1,70 +1,69 @@
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
+import 'dart:convert';
 
-class TambahDataDosen extends StatefulWidget {
-  const TambahDataDosen({super.key});
+import 'package:latihan_lumen_dosen_flutter/models/model_data_dosen.dart';
+
+class EditDataDosen extends StatefulWidget {
+  final ModelDosen data;
+
+  const EditDataDosen({super.key, required this.data});
 
   @override
-  State<TambahDataDosen> createState() => _TambahDataDosenState();
+  State<EditDataDosen> createState() => _EditDataDosenState();
 }
 
-class _TambahDataDosenState extends State<TambahDataDosen> {
+class _EditDataDosenState extends State<EditDataDosen> {
   final _formKey = GlobalKey<FormState>();
   final TextEditingController _namaLengkapController = TextEditingController();
   final TextEditingController _nipController = TextEditingController();
-  final TextEditingController _nomorTeleponController = TextEditingController();
   final TextEditingController _emailController = TextEditingController();
+  final TextEditingController _nomorTeleponController = TextEditingController();
   final TextEditingController _alamatController = TextEditingController();
 
   bool _isLoading = false;
 
-  Future<void> _simpanData() async {
-    setState(() => _isLoading = true);
-    final url = Uri.parse('http://192.168.162.74:8000/api/dosen');
-
-    try {
-      final response = await http.post(
-        url,
-        headers: {
-          'Content-Type': 'application/x-www-form-urlencoded',
-        },
-
-        body: {
-          "nip": _nipController.text,
-          "nama_lengkap": _namaLengkapController.text,
-          "no_telepon": _nomorTeleponController.text,
-          "email": _emailController.text,
-          "alamat": _alamatController.text,
-        },
-      );
-
-      if (response.statusCode == 200 || response.statusCode == 201) {
-        ScaffoldMessenger.of(
-          context,
-        ).showSnackBar(const SnackBar(content: Text("Data berhasil disimpan")));
-        Navigator.pop(context, true); // kembali ke halaman sebelumnya
-      } else {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text("Gagal menyimpan: ${response.statusCode} ${response.body}")),
-        );
-      }
-    } catch (e) {
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(SnackBar(content: Text("Terjadi kesalahan: $e")));
-    } finally {
-      setState(() => _isLoading = false);
-    }
+  @override
+  void initState() {
+    super.initState();
+    _namaLengkapController.text = widget.data.namaLengkap;
+    _nipController.text = widget.data.nip;
+    _emailController.text = widget.data.email;
+    _nomorTeleponController.text = widget.data.noTelepon;
+    _alamatController.text = widget.data.alamat;
   }
 
-  @override
-  void dispose() {
-    _namaLengkapController.dispose();
-    _nipController.dispose();
-    _nomorTeleponController.dispose();
-    _emailController.dispose();
-    _alamatController.dispose();
-    super.dispose();
+  Future<void> _simpanEdit() async {
+    if (_formKey.currentState!.validate()) {
+      setState(() => _isLoading = true);
+      final response = await http.put(
+        Uri.parse('http://192.168.162.74:8000/api/dosen/${widget.data.no}'),
+        headers: {
+          'Content-Type': 'application/json',
+          'x-api-key': 'reqres-free-v1',
+        },
+        body: jsonEncode({
+          'nama_lengkap': _namaLengkapController.text,
+          'nip': _nipController.text,
+          'email': _emailController.text,
+          'no_telepon': _nomorTeleponController.text,
+          'alamat': _alamatController.text,
+        }),
+      );
+
+      if (response.statusCode == 200) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Data berhasil diperbarui')),
+        );
+        Navigator.pop(context); // kembali ke halaman list
+      } else {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Gagal memperbarui data (${response.statusCode})'),
+          ),
+        );
+      }
+    }
   }
 
   Widget _buildTextField(
@@ -87,11 +86,21 @@ class _TambahDataDosenState extends State<TambahDataDosen> {
   }
 
   @override
+  void dispose() {
+    _namaLengkapController.dispose();
+    _nipController.dispose();
+    _emailController.dispose();
+    _nomorTeleponController.dispose();
+    _alamatController.dispose();
+    super.dispose();
+  }
+
+  @override
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
         title: const Text(
-          'Tambah Data Dosen',
+          'Edit Data Dosen',
           style: TextStyle(color: Colors.white),
         ),
         backgroundColor: Colors.orange.shade900,
@@ -141,15 +150,15 @@ class _TambahDataDosenState extends State<TambahDataDosen> {
                       shape: RoundedRectangleBorder(
                         borderRadius: BorderRadius.circular(10),
                       ),
-                    ), 
+                    ),
                     icon: const Icon(Icons.save, color: Colors.white),
                     label: const Text(
-                      'Simpan Data',
+                      'Simpan perubahan',
                       style: TextStyle(fontSize: 16, color: Colors.white),
                     ),
                     onPressed: () {
                       if (_formKey.currentState!.validate()) {
-                        _simpanData();
+                        _simpanEdit();
                       }
                     },
                   ),
